@@ -1,0 +1,1530 @@
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Huffman Image Compressor & Analyzer</title>
+    <!-- Tailwind CSS for modern responsive utility styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for beautiful analytical graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- KaTeX for elegant mathematical rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0b0f19',
+                        darkCard: '#151d30',
+                        accentBlue: '#1f77ff',
+                        accentGreen: '#10b981',
+                        accentRed: '#f43f5e',
+                        accentBorder: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+        .glow-button:hover {
+            box-shadow: 0 0 15px rgba(31, 119, 255, 0.4);
+        }
+        .glow-border {
+            box-shadow: inset 0 0 12px rgba(31, 119, 255, 0.05);
+        }
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- MAIN SITE HEADER -->
+    <header class="py-6 px-4 md:px-8 border-b border-accentBorder bg-darkCard/80 backdrop-blur-md sticky top-0 z-30 shadow-lg">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-4xl animate-pulse">🖼️</span>
+                <div class="text-left">
+                    <h1 class="text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                        Huffman Predictive Compressor 
+                        <span class="text-xs bg-accentGreen/20 text-accentGreen px-2.5 py-0.5 rounded-full border border-accentGreen/30 animate-pulse">DPCM Predictor Active</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 font-medium">Predictive Spatial Decorrelation & Huffman Coding Engine</p>
+                </div>
+            </div>
+            
+            <!-- Global Mode Switcher -->
+            <div class="flex bg-darkBg p-1 rounded-full border border-accentBorder w-full md:w-auto">
+                <button id="mode-compress-btn" onclick="setGlobalMode('compress')" class="flex-1 md:flex-none px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 bg-accentBlue text-white shadow-md">
+                    📷 Compress
+                </button>
+                <button id="mode-decompress-btn" onclick="setGlobalMode('decompress')" class="flex-1 md:flex-none px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 text-slate-400 hover:text-white">
+                    📂 Decompress
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 md:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- SIDEBAR CONTROLS (3 cols on large screens) -->
+        <aside class="lg:col-span-3 space-y-6">
+            <div class="bg-darkCard rounded-3xl p-5 border border-accentBorder glow-border space-y-5 shadow-2xl">
+                <h3 class="text-sm font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2 border-b border-accentBorder pb-3">
+                    <span>⚙️</span> Operational Deck
+                </h3>
+
+                <!-- Compress Controls Layer -->
+                <div id="sidebar-compress-controls" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Select Pattern Generator</label>
+                        <select id="preset-selector" onchange="loadPresetImage()" class="w-full bg-darkBg border border-accentBorder rounded-xl px-3 py-2.5 text-xs text-white font-semibold focus:outline-none focus:ring-2 focus:ring-accentBlue transition-all">
+                            <option value="sunset">🌅 Sunset Gradient</option>
+                            <option value="checkerboard">🏁 Color Checkerboard</option>
+                            <option value="plasma">🌌 Plasma Wavefronts</option>
+                        </select>
+                    </div>
+
+                    <div class="relative group cursor-pointer border border-dashed border-accentBorder hover:border-accentBlue/60 rounded-2xl p-4 transition-all text-center bg-darkBg">
+                        <input type="file" id="image-file-input" accept="image/*" onchange="handleImageUpload(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                        <div class="space-y-2">
+                            <span class="inline-block text-2xl text-slate-500 group-hover:scale-110 transition-transform">📤</span>
+                            <p class="text-xs font-bold text-slate-300">Upload Image File</p>
+                            <p class="text-[10px] text-slate-500">Supports PNG, JPG, BMP</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Decompress Controls Layer -->
+                <div id="sidebar-decompress-controls" class="space-y-4 hidden">
+                    <div class="bg-accentBlue/10 border border-accentBlue/20 rounded-xl p-3">
+                        <p class="text-[11px] text-slate-300 leading-relaxed">
+                            Upload a saved <strong>.bin</strong> file generated by this system. The app decodes the embedded byte patterns, reverses the predictive difference filter, and reproduces the original image with 100% fidelity.
+                        </p>
+                    </div>
+                    <div class="relative group cursor-pointer border border-dashed border-accentBlue/30 hover:border-accentBlue rounded-2xl p-5 transition-all text-center bg-darkBg">
+                        <input type="file" id="bin-file-input" accept=".bin" onchange="handleBinUpload(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                        <div class="space-y-2">
+                            <span class="inline-block text-2xl">📂</span>
+                            <p class="text-xs font-bold text-slate-200">Load Huffman .bin</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Global options -->
+                <div class="border-t border-accentBorder pt-4 space-y-3">
+                    <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Dashboard Visualizer Checks</h4>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                            <input type="checkbox" id="opt-frequency" checked onchange="toggleAnalysisView()" class="w-4 h-4 rounded border-accentBorder bg-darkBg text-accentBlue focus:ring-accentBlue">
+                            <span class="text-xs font-medium text-slate-300">Code Lexicon Table</span>
+                        </label>
+                        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                            <input type="checkbox" id="opt-charts" checked onchange="toggleAnalysisView()" class="w-4 h-4 rounded border-accentBorder bg-darkBg text-accentBlue focus:ring-accentBlue">
+                            <span class="text-xs font-medium text-slate-300">Analytical Charts</span>
+                        </label>
+                        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                            <input type="checkbox" id="opt-binary" checked onchange="toggleAnalysisView()" class="w-4 h-4 rounded border-accentBorder bg-darkBg text-accentBlue focus:ring-accentBlue">
+                            <span class="text-xs font-medium text-slate-300">Live Bitstream Preview</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Direct Action Buttons Block -->
+                <div class="border-t border-accentBorder pt-4 space-y-2">
+                    <button onclick="downloadCompressedFile()" class="w-full bg-accentBlue hover:bg-accentBlue/90 text-white font-bold text-xs py-2 px-3 rounded-xl transition-all glow-button flex items-center justify-center gap-2">
+                        <span>💾</span> Download .bin
+                    </button>
+                    <button onclick="downloadReconstructedImage()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-2">
+                        <span>🖼️</span> Save PNG Image
+                    </button>
+                </div>
+
+                <!-- Toast Warning/Success banner -->
+                <div id="toast-banner" class="hidden p-3 rounded-xl border text-xs font-semibold leading-snug transition-all duration-300"></div>
+            </div>
+        </aside>
+
+        <!-- CORE WORKSPACE (9 cols on large screens) -->
+        <section class="lg:col-span-9 space-y-6">
+            
+            <!-- TABS NAVIGATION -->
+            <div class="flex overflow-x-auto bg-darkCard p-1 rounded-2xl border border-accentBorder shadow-lg scrollbar-hide">
+                <button onclick="switchTab('compression')" id="tab-compression" class="tab-btn px-6 py-3 rounded-xl text-xs font-bold whitespace-nowrap transition-all bg-accentBlue text-white shadow-md flex items-center gap-2">
+                    ⚡ Compressor Workspace
+                </button>
+                <button onclick="switchTab('analysis')" id="tab-analysis" class="tab-btn px-6 py-3 rounded-xl text-xs font-bold whitespace-nowrap transition-all text-slate-400 hover:text-white flex items-center gap-2">
+                    📊 Advanced Analytics
+                </button>
+                <button onclick="switchTab('daa')" id="tab-daa" class="tab-btn px-6 py-3 rounded-xl text-xs font-bold whitespace-nowrap transition-all text-slate-400 hover:text-white flex items-center gap-2">
+                    📖 Theoretical Guide
+                </button>
+            </div>
+
+            <!-- TAB 1: WORKSPACE -->
+            <div id="content-compression" class="tab-content space-y-6">
+                
+                <!-- Status Matrix Bar -->
+                <div class="bg-darkCard rounded-3xl p-5 border border-accentBorder flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg">
+                    <div class="text-center md:text-left">
+                        <h2 class="text-sm font-bold text-slate-200">Predictive Entropy Lossless Pipeline</h2>
+                        <p class="text-[11px] text-slate-400" id="current-stage-desc">Applying Spatial Pixel Decorrelation Filter...</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span id="lossless-badge" class="px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-accentGreen/15 text-accentGreen border border-accentGreen/30 shadow-inner">
+                            ✓ 100% PERFECT LOSS-FREE
+                        </span>
+                        <span id="process-timer" class="px-3.5 py-1.5 rounded-full text-[10px] font-bold bg-darkBg text-slate-300 border border-accentBorder shadow-inner">
+                            Time: 0ms
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Canvas Side-by-Side Display Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-darkCard rounded-3xl p-4 border border-accentBorder space-y-3 shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-300 uppercase tracking-widest">Original Reference</span>
+                            <span id="size-original-dim" class="text-[10px] bg-darkBg px-2 py-0.5 rounded border border-accentBorder text-slate-400">Loading dimensions...</span>
+                        </div>
+                        <div class="bg-darkBg rounded-2xl overflow-hidden aspect-video flex items-center justify-center p-1.5">
+                            <canvas id="canvas-original" class="max-w-full max-h-48 object-contain rounded shadow-2xl"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-darkCard rounded-3xl p-4 border border-accentBorder space-y-3 shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-300 uppercase tracking-widest">Decompressed Rebuild</span>
+                            <span id="reconstruct-status" class="text-[10px] font-bold text-accentGreen">Matched Exactly</span>
+                        </div>
+                        <div class="bg-darkBg rounded-2xl overflow-hidden aspect-video flex items-center justify-center p-1.5">
+                            <canvas id="canvas-reconstructed" class="max-w-full max-h-48 object-contain rounded shadow-2xl"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Core Stats Metrics Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-darkCard rounded-2xl p-4 border border-accentBorder text-left">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Uncompressed Size</p>
+                        <p id="stat-raw-bytes" class="text-base font-extrabold text-white mt-1">-- Bytes</p>
+                        <p class="text-[9px] text-slate-500 font-medium">Width x Height x 3 Chs</p>
+                    </div>
+                    <div class="bg-darkCard rounded-2xl p-4 border border-accentBorder text-left">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Compressed Payload</p>
+                        <p id="stat-comp-bytes" class="text-base font-extrabold text-accentBlue mt-1">-- Bytes</p>
+                        <p class="text-[9px] text-slate-500 font-medium">Packed binary length</p>
+                    </div>
+                    <div class="bg-darkCard rounded-2xl p-4 border border-accentBorder text-left">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Compression Ratio</p>
+                        <p id="stat-ratio" class="text-base font-extrabold text-accentGreen mt-1">-- : 1</p>
+                        <p class="text-[9px] text-slate-500 font-medium">Upgraded by Predictor Layer</p>
+                    </div>
+                    <div class="bg-darkCard rounded-2xl p-4 border border-accentBorder text-left">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Saved Memory Space</p>
+                        <p id="stat-saved-percent" class="text-base font-extrabold text-white mt-1">-- %</p>
+                        <p class="text-[9px] text-slate-500 font-medium">Absolute storage reduction</p>
+                    </div>
+                </div>
+
+                <!-- Histograms Section -->
+                <div class="bg-darkCard rounded-3xl p-5 border border-accentBorder shadow-lg">
+                    <h3 class="text-xs font-bold text-slate-200 mb-4 uppercase tracking-widest">Global RGB Intensity distribution (Original Source)</h3>
+                    <div class="w-full h-56">
+                        <canvas id="histogram-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: ANALYSIS -->
+            <div id="content-analysis" class="tab-content hidden space-y-6">
+                
+                <!-- Channel selector inside sub-tabs to avoid side navigation clutter -->
+                <div class="bg-darkCard rounded-3xl p-5 border border-accentBorder flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg">
+                    <div>
+                        <h2 class="text-sm font-bold text-white">Spatial Entropy & Code Length Lookup</h2>
+                        <p class="text-[11px] text-slate-400">Observe how the Predictive Filter concentrates difference errors around 0 to minimize coding bit depths.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="setAnalysisChannel('Red')" id="btn-ch-Red" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-accentRed text-white shadow-md">Red</button>
+                        <button onclick="setAnalysisChannel('Green')" id="btn-ch-Green" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-800 text-slate-400 hover:text-white">Green</button>
+                        <button onclick="setAnalysisChannel('Blue')" id="btn-ch-Blue" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-800 text-slate-400 hover:text-white">Blue</button>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-darkCard rounded-2xl p-4 border border-accentBorder text-center">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Unique Color Keys</p>
+                        <p id="ch-unique" class="text-lg font-black text-white mt-1">--</p>
+                    </div>
+                    <div class="bg-darkCard rounded-2xl p-4 border border-accentBorder text-center">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Tree Depth Height</p>
+                        <p id="ch-height" class="text-lg font-black text-white mt-1">--</p>
+                    </div>
+                    <div class="bg-darkCard rounded-2xl p-4 border border-accentBorder text-center">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Shortest Codeword</p>
+                        <p id="ch-min-len" class="text-lg font-black text-accentGreen mt-1">--</p>
+                    </div>
+                    <div class="bg-darkCard rounded-2xl p-4 border border-accentBorder text-center">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Longest Codeword</p>
+                        <p id="ch-max-len" class="text-lg font-black text-accentBlue mt-1">--</p>
+                    </div>
+                </div>
+
+                <!-- Chart Analysis Block -->
+                <div id="section-charts" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-darkCard rounded-3xl p-5 border border-accentBorder shadow-lg">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">Top 20 Probable Predictive Differences ($0$ means identical adjacent pixels)</p>
+                        <div class="h-48"><canvas id="chart-freq-top"></canvas></div>
+                    </div>
+                    <div class="bg-darkCard rounded-3xl p-5 border border-accentBorder shadow-lg">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">Difference Error Codeword Bit-Lengths</p>
+                        <div class="h-48"><canvas id="chart-code-lengths"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- Unified Table Map -->
+                <div id="section-tables" class="bg-darkCard rounded-3xl border border-accentBorder shadow-lg overflow-hidden">
+                    <div class="p-4 border-b border-accentBorder flex flex-col sm:flex-row items-center justify-between bg-darkBg/50 gap-3">
+                        <h4 class="text-xs font-bold text-white uppercase tracking-wider">Channel Mapped Difference Error Lexicon</h4>
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <input type="text" id="table-search" placeholder="Search differences (0-255)..." oninput="filterCodeTable()" class="bg-darkBg border border-accentBorder text-xs px-3 py-1.5 rounded-lg w-full sm:w-48 text-white focus:outline-none focus:ring-1 focus:ring-accentBlue">
+                            <button onclick="downloadCSVTable()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap">
+                                📊 Export CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto max-h-72">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-darkBg text-slate-400 font-bold border-b border-accentBorder">
+                                    <th class="p-3">Difference Value (0-255)</th>
+                                    <th class="p-3">Count (Frequency)</th>
+                                    <th class="p-3">Probability</th>
+                                    <th class="p-3">Allocated Codeword</th>
+                                    <th class="p-3">Codeword Length</th>
+                                </tr>
+                            </thead>
+                            <tbody id="code-table-body" class="divide-y divide-accentBorder text-slate-300 font-medium">
+                                <!-- Generated Dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bitstream Code Block -->
+                <div id="section-binary-bitstream" class="bg-darkCard rounded-3xl p-5 border border-accentBorder shadow-lg space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-bold text-white uppercase tracking-wider">Raw Coded Bitstream Preview (First 1,500 bits)</h4>
+                        <span class="text-[10px] text-slate-500 font-mono" id="stream-total-bits">0 bits total</span>
+                    </div>
+                    <pre id="binary-preview" class="p-4 bg-darkBg text-accentGreen font-mono text-[10px] rounded-2xl overflow-x-auto break-all whitespace-pre-wrap max-h-36 leading-relaxed shadow-inner">--</pre>
+                </div>
+            </div>
+
+            <!-- TAB 3: DAA CONCEPT & VIVA -->
+            <div id="content-daa" class="tab-content hidden space-y-6">
+                
+                <!-- Slide Deck Panel Component -->
+                <div class="bg-darkCard rounded-3xl p-6 border border-accentBorder shadow-lg space-y-6">
+                    <div class="flex items-center justify-between border-b border-accentBorder pb-4">
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Interactive Slides Deck</h3>
+                        <div class="flex items-center gap-3">
+                            <button onclick="changeSlide(-1)" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 transition-all">← Prev</button>
+                            <span id="slide-indicator" class="text-[10px] font-bold text-slate-500">Slide 1 / 5</span>
+                            <button onclick="changeSlide(1)" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 transition-all">Next →</button>
+                        </div>
+                    </div>
+
+                    <!-- Slide Box -->
+                    <div class="min-h-56 flex items-center justify-center p-6 bg-darkBg rounded-2xl relative overflow-hidden shadow-inner">
+                        <div id="slide-1" class="slide-card space-y-3 max-w-xl text-center slide-transition">
+                            <span class="text-4xl">🎯</span>
+                            <h2 class="text-lg font-black text-white">Lossless Compression Enhancement</h2>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Our updated design utilizes a **Predictive Differential Layer**. Rather than encoding raw independent pixels, the pipeline encodes spatial error differences between adjacent neighbors. This concentrates counts near zero and drives up compression.
+                            </p>
+                        </div>
+                        <div id="slide-2" class="slide-card space-y-3 max-w-xl text-center slide-transition hidden">
+                            <span class="text-4xl">📊</span>
+                            <h2 class="text-lg font-black text-white">Prefix Codeword Properties</h2>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Huffman produces prefix-free binary vectors. Because no code sequence serves as a valid prefix to another key, an encoded binary stream can be parsed sequentially without needing spacer symbols or delimiter blocks.
+                            </p>
+                        </div>
+                        <div id="slide-3" class="slide-card space-y-3 max-w-xl text-center slide-transition hidden">
+                            <span class="text-4xl">🛠️</span>
+                            <h2 class="text-lg font-black text-white">The Greedy Min-Heap Paradigm</h2>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                We utilize a bottom-up greedy framework. A priority queue constantly merges the two least frequent color differences. Highly active values finish closer to the root node, resulting in extremely compact bit representations.
+                            </p>
+                        </div>
+                        <div id="slide-4" class="slide-card space-y-3 max-w-xl text-center slide-transition hidden">
+                            <span class="text-4xl">⚡</span>
+                            <h2 class="text-lg font-black text-white">Comparing JPEG Lossy Logic</h2>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                JPEG processes image structures via frequency transformations (Discrete Cosine Transforms) and visual detail quantization, which permanently discards data. Huffman is entirely lossless, preserving raw physical arrays perfectly.
+                            </p>
+                        </div>
+                        <div id="slide-5" class="slide-card space-y-3 max-w-xl text-center slide-transition hidden">
+                            <span class="text-4xl">🏫</span>
+                            <h2 class="text-lg font-black text-white">Critical Performance Math</h2>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                The system dynamically computes Channel Entropy ($H$) and tracks code lengths ($L_{avg}$). The closer our average code length is to the Shannon entropy bound, the higher our algorithmic compression efficiency becomes.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Theoretical and Viva Questions panel -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-darkCard rounded-3xl p-5 border border-accentBorder shadow-lg space-y-3">
+                        <h4 class="text-xs font-bold text-white uppercase tracking-widest">Complexity Formulas</h4>
+                        <div class="bg-darkBg rounded-2xl p-4 border border-accentBorder text-center text-sm font-mono text-accentBlue space-y-2">
+                            <div>$$\text{Time Complexity: } O(N + n \log n)$$</div>
+                            <div>$$\text{Space Complexity: } O(N + n)$$</div>
+                        </div>
+                        <p class="text-[11px] text-slate-400 leading-relaxed">
+                            Where <strong>$N$</strong> is the overall pixel count ($W \times H$) and <strong>$n$</strong> is the number of unique colors ($n \le 256$). Finding frequencies runs in $O(N)$ time. Min-Heap building takes $O(n \log n)$ time.
+                        </p>
+                    </div>
+
+                    <div class="bg-darkCard rounded-3xl p-5 border border-accentBorder shadow-lg space-y-4">
+                        <h4 class="text-xs font-bold text-white uppercase tracking-widest">Selected Viva Q&As</h4>
+                        <div class="space-y-2">
+                            <details class="group bg-darkBg rounded-xl border border-accentBorder p-3 [&_summary::-webkit-details-marker]:hidden">
+                                <summary class="flex items-center justify-between cursor-pointer font-bold text-xs text-slate-200 select-none">
+                                    <span>Why is Huffman called a Greedy algorithm?</span>
+                                    <span class="transition group-open:rotate-180 text-accentBlue">▼</span>
+                                </summary>
+                                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">
+                                    It makes the locally optimal choice at each step (merging the two nodes with the absolute lowest frequencies) to construct an optimal global prefix code tree structure.
+                                </p>
+                            </details>
+                            <details class="group bg-darkBg rounded-xl border border-accentBorder p-3 [&_summary::-webkit-details-marker]:hidden">
+                                <summary class="flex items-center justify-between cursor-pointer font-bold text-xs text-slate-200 select-none">
+                                    <span>How does the predictive filter improve compression without losing quality?</span>
+                                    <span class="transition group-open:rotate-180 text-accentBlue">▼</span>
+                                </summary>
+                                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">
+                                    It utilizes reversible addition and subtraction equations modulo 256. Because neighboring pixels contain highly correlated values, their differences pack close to zero, which drops the Shannon entropy limit and creates shorter binary codes while remaining completely invertible.
+                                </p>
+                            </details>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- HIDDEN PROCESSING UTILITIES -->
+    <canvas id="hidden-processing-canvas" class="hidden"></canvas>
+
+    <!-- ALGORITHMIC & INTERACTIVE RUNTIMES -->
+    <script>
+        // ==========================================
+        // ALGORITHMIC DATA STRUCTURES
+        // ==========================================
+        class HuffmanNode {
+            constructor(pixel = null, frequency = 0) {
+                this.pixel = pixel; 
+                this.frequency = frequency;
+                this.left = null;
+                this.right = null;
+            }
+        }
+
+        class MinHeap {
+            constructor() {
+                this.heap = [];
+            }
+            push(node) {
+                this.heap.push(node);
+                this.bubbleUp(this.heap.length - 1);
+            }
+            pop() {
+                const min = this.heap[0];
+                const end = this.heap.pop();
+                if (this.heap.length > 0) {
+                    this.heap[0] = end;
+                    this.sinkDown(0);
+                }
+                return min;
+            }
+            bubbleUp(n) {
+                const element = this.heap[n];
+                while (n > 0) {
+                    const parentN = Math.floor((n + 1) / 2) - 1;
+                    const parent = this.heap[parentN];
+                    if (element.frequency >= parent.frequency) break;
+                    this.heap[parentN] = element;
+                    this.heap[n] = parent;
+                    n = parentN;
+                }
+            }
+            sinkDown(n) {
+                const length = this.heap.length;
+                const element = this.heap[n];
+                while (true) {
+                    const child2N = (n + 1) * 2;
+                    const child1N = child2N - 1;
+                    let swap = null;
+                    let child1, child2;
+                    if (child1N < length) {
+                        child1 = this.heap[child1N];
+                        if (child1.frequency < element.frequency) swap = child1N;
+                    }
+                    if (child2N < length) {
+                        child2 = this.heap[child2N];
+                        if (
+                            (swap === null && child2.frequency < element.frequency) ||
+                            (swap !== null && child2.frequency < child1.frequency)
+                        ) {
+                            swap = child2N;
+                        }
+                    }
+                    if (swap === null) break;
+                    this.heap[n] = this.heap[swap];
+                    this.heap[swap] = element;
+                    n = swap;
+                }
+            }
+            size() {
+                return this.heap.length;
+            }
+        }
+
+        // ==========================================
+        // STATE STORAGE
+        // ==========================================
+        let currentImageWidth = 0;
+        let currentImageHeight = 0;
+        let originalImageData = null; 
+        let reconstructedImageData = null; 
+        let activeGlobalMode = 'compress'; 
+        let selectedAnalysisChannel = 'Red'; 
+        let activeSlideIdx = 1;
+        const totalSlides = 5;
+
+        let compressionResult = {
+            Red: null,
+            Green: null,
+            Blue: null,
+            timeMs: 0
+        };
+
+        let rgbHistogramChartInstance = null;
+        let frequencyChartInstance = null;
+        let codeLengthChartInstance = null;
+
+        // ==========================================
+        // PREDICTIVE DIFFERENTIAL FILTERS (100% Lossless)
+        // ==========================================
+        function applyPredictiveFilter(channelArray) {
+            const len = channelArray.length;
+            const filtered = new Uint8Array(len);
+            filtered[0] = channelArray[0];
+            for (let i = 1; i < len; i++) {
+                // Modulo arithmetic guarantees values wrap nicely inside 0-255 without loss
+                filtered[i] = (channelArray[i] - channelArray[i-1] + 256) % 256;
+            }
+            return filtered;
+        }
+
+        function invertPredictiveFilter(filteredArray) {
+            const len = filteredArray.length;
+            const original = new Uint8Array(len);
+            original[0] = filteredArray[0];
+            for (let i = 1; i < len; i++) {
+                original[i] = (filteredArray[i] + original[i-1]) % 256;
+            }
+            return original;
+        }
+
+        // ==========================================
+        // CORE HUFFMAN UTILITIES
+        // ==========================================
+        function calculateFrequency(channelArray) {
+            const freq = Array(256).fill(0);
+            for (let i = 0; i < channelArray.length; i++) {
+                freq[channelArray[i]]++;
+            }
+            return freq;
+        }
+
+        // Build Min-Heap based tree
+        function buildHuffmanTree(frequencies) {
+            const heap = new MinHeap();
+            for (let i = 0; i < 256; i++) {
+                if (frequencies[i] > 0) {
+                    heap.push(new HuffmanNode(i, frequencies[i]));
+                }
+            }
+
+            if (heap.size() === 1) {
+                const single = heap.pop();
+                const root = new HuffmanNode(null, single.frequency);
+                root.left = single;
+                return root;
+            }
+
+            while (heap.size() > 1) {
+                const left = heap.pop();
+                const right = heap.pop();
+                const merged = new HuffmanNode(null, left.frequency + right.frequency);
+                merged.left = left;
+                merged.right = right;
+                heap.push(merged);
+            }
+            return heap.pop();
+        }
+
+        function generateHuffmanCodes(root, currentCode = "", codes = {}) {
+            if (!root) return codes;
+            if (root.pixel !== null) {
+                codes[root.pixel] = currentCode === "" ? "0" : currentCode;
+                return codes;
+            }
+            generateHuffmanCodes(root.left, currentCode + "0", codes);
+            generateHuffmanCodes(root.right, currentCode + "1", codes);
+            return codes;
+        }
+
+        function encodePixels(channelArray, codes) {
+            const chunks = [];
+            for (let i = 0; i < channelArray.length; i++) {
+                chunks.push(codes[channelArray[i]]);
+            }
+            return chunks.join("");
+        }
+
+        function decodeBits(encodedBits, root, totalLength) {
+            const decoded = new Uint8Array(totalLength);
+            let currentNode = root;
+            let decodedIdx = 0;
+
+            for (let i = 0; i < encodedBits.length; i++) {
+                currentNode = (encodedBits[i] === "0") ? currentNode.left : currentNode.right;
+                if (currentNode.pixel !== null) {
+                    decoded[decodedIdx++] = currentNode.pixel;
+                    currentNode = root;
+                    if (decodedIdx >= totalLength) break;
+                }
+            }
+            return decoded;
+        }
+
+        function computeEntropy(frequencies, totalPixels) {
+            let entropy = 0;
+            for (let i = 0; i < 256; i++) {
+                if (frequencies[i] > 0) {
+                    const prob = frequencies[i] / totalPixels;
+                    entropy += prob * Math.log2(1 / prob);
+                }
+            }
+            return entropy;
+        }
+
+        function computeAvgCodeLength(frequencies, codes, totalPixels) {
+            let avg = 0;
+            for (let i = 0; i < 256; i++) {
+                if (frequencies[i] > 0) {
+                    const prob = frequencies[i] / totalPixels;
+                    const codeLen = codes[i] ? codes[i].length : 0;
+                    avg += prob * codeLen;
+                }
+            }
+            return avg;
+        }
+
+        // ==========================================
+        // DYNAMIC RUNTIME EXECUTIONS
+        // ==========================================
+        window.onload = function() {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
+            loadPresetImage();
+        };
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast-banner');
+            toast.textContent = message;
+            toast.className = `p-3 rounded-xl border text-xs font-semibold leading-snug transition-all duration-300 block ${
+                type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+            }`;
+            setTimeout(() => {
+                toast.className = 'hidden';
+            }, 4000);
+        }
+
+        function setGlobalMode(mode) {
+            activeGlobalMode = mode;
+            const compBtn = document.getElementById('mode-compress-btn');
+            const decompressBtn = document.getElementById('mode-decompress-btn');
+            const compSidebar = document.getElementById('sidebar-compress-controls');
+            const decompressSidebar = document.getElementById('sidebar-decompress-controls');
+
+            if (mode === 'compress') {
+                compBtn.className = "flex-1 md:flex-none px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 bg-accentBlue text-white shadow-md";
+                decompressBtn.className = "flex-1 md:flex-none px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 text-slate-400 hover:text-white";
+                compSidebar.classList.remove('hidden');
+                decompressSidebar.classList.add('hidden');
+                document.getElementById('current-stage-desc').textContent = "Analyzing spatial pattern allocations...";
+            } else {
+                decompressBtn.className = "flex-1 md:flex-none px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 bg-accentBlue text-white shadow-md";
+                compBtn.className = "flex-1 md:flex-none px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 text-slate-400 hover:text-white";
+                decompressSidebar.classList.remove('hidden');
+                compSidebar.classList.add('hidden');
+                document.getElementById('current-stage-desc').textContent = "Upload serialized .bin package outputs...";
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`content-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-6 py-3 rounded-xl text-xs font-bold whitespace-nowrap transition-all text-slate-400 hover:text-white flex items-center gap-2";
+            });
+            document.getElementById(`tab-${tabId}`).className = "tab-btn px-6 py-3 rounded-xl text-xs font-bold whitespace-nowrap transition-all bg-accentBlue text-white shadow-md flex items-center gap-2";
+        }
+
+        function toggleAnalysisView() {
+            const showTable = document.getElementById('opt-frequency').checked;
+            const showCharts = document.getElementById('opt-charts').checked;
+            const showBinary = document.getElementById('opt-binary').checked;
+
+            const sectionTable = document.getElementById('section-tables');
+            const sectionCharts = document.getElementById('section-charts');
+            const sectionBinary = document.getElementById('section-binary-bitstream');
+
+            if (showTable) sectionTable.classList.remove('hidden'); else sectionTable.classList.add('hidden');
+            if (showCharts) sectionCharts.classList.remove('hidden'); else sectionCharts.classList.add('hidden');
+            if (showBinary) sectionBinary.classList.remove('hidden'); else sectionBinary.classList.add('hidden');
+        }
+
+        // ==========================================
+        // PRESET MATRICES GENERATORS
+        // ==========================================
+        function loadPresetImage() {
+            const selector = document.getElementById('preset-selector');
+            const canvas = document.getElementById('hidden-processing-canvas');
+            const ctx = canvas.getContext('2d');
+            const preset = selector.value;
+
+            const w = 240;
+            const h = 180;
+            canvas.width = w;
+            canvas.height = h;
+
+            if (preset === 'sunset') {
+                const grad = ctx.createLinearGradient(0, 0, 0, h);
+                grad.addColorStop(0, '#f43f5e'); 
+                grad.addColorStop(0.5, '#a855f7'); 
+                grad.addColorStop(1, '#1d4ed8'); 
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, w, h);
+            } else if (preset === 'checkerboard') {
+                const size = 30;
+                for (let y = 0; y < h; y += size) {
+                    for (let x = 0; x < w; x += size) {
+                        ctx.fillStyle = ((x / size + y / size) % 2 === 0) ? '#10b981' : '#6366f1';
+                        ctx.fillRect(x, y, size, size);
+                    }
+                }
+            } else if (preset === 'plasma') {
+                const imgData = ctx.createImageData(w, h);
+                const data = imgData.data;
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const idx = (y * w + x) * 4;
+                        const v1 = Math.sin(x / 16.0);
+                        const v2 = Math.sin(y / 16.0);
+                        const r = Math.floor((Math.sin(v1 + v2) + 1.0) * 127);
+                        const g = Math.floor((Math.cos(v1 * v2) + 1.0) * 127);
+                        const b = Math.floor((v1 + v2 + 1.0) * 63);
+                        data[idx] = r;
+                        data[idx+1] = g;
+                        data[idx+2] = b;
+                        data[idx+3] = 255; 
+                    }
+                }
+                ctx.putImageData(imgData, 0, 0);
+            }
+
+            processCurrentImage(canvas);
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.getElementById('hidden-processing-canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    let w = img.width;
+                    let h = img.height;
+                    const maxDim = 320;
+                    if (w > maxDim || h > maxDim) {
+                        if (w > h) {
+                            h = Math.floor((h * maxDim) / w);
+                            w = maxDim;
+                        } else {
+                            w = Math.floor((w * maxDim) / h);
+                            h = maxDim;
+                        }
+                        showToast(`Optimized scale constraints to ${w}x${h} dimensions.`, 'success');
+                    }
+
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+                    processCurrentImage(canvas);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function processCurrentImage(canvas) {
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            currentImageWidth = w;
+            currentImageHeight = h;
+
+            const imgData = ctx.getImageData(0, 0, w, h);
+            originalImageData = imgData.data;
+
+            const totalPixels = w * h;
+            const R_array = new Uint8Array(totalPixels);
+            const G_array = new Uint8Array(totalPixels);
+            const B_array = new Uint8Array(totalPixels);
+
+            for (let i = 0; i < totalPixels; i++) {
+                R_array[i] = originalImageData[i * 4];
+                G_array[i] = originalImageData[i * 4 + 1];
+                B_array[i] = originalImageData[i * 4 + 2];
+            }
+
+            const startTime = performance.now();
+
+            // Run compression using predictive filters
+            const R_result = compressSingleChannel(R_array, 'Red');
+            const G_result = compressSingleChannel(G_array, 'Green');
+            const B_result = compressSingleChannel(B_array, 'Blue');
+
+            const endTime = performance.now();
+            const elapsed = Math.round(endTime - startTime);
+
+            compressionResult = {
+                Red: R_result,
+                Green: G_result,
+                Blue: B_result,
+                timeMs: elapsed
+            };
+
+            reconstructedImageData = new Uint8ClampedArray(w * h * 4);
+            for (let i = 0; i < totalPixels; i++) {
+                reconstructedImageData[i * 4] = R_result.reconstructed[i];
+                reconstructedImageData[i * 4 + 1] = G_result.reconstructed[i];
+                reconstructedImageData[i * 4 + 2] = B_result.reconstructed[i];
+                reconstructedImageData[i * 4 + 3] = 255; 
+            }
+
+            drawCanvasOriginal(canvas);
+            drawCanvasReconstructed(w, h, reconstructedImageData);
+
+            updateMetrics(elapsed);
+
+            // Compute raw frequencies for visual profile histograms
+            const r_raw_freq = calculateFrequency(R_array);
+            const g_raw_freq = calculateFrequency(G_array);
+            const b_raw_freq = calculateFrequency(B_array);
+            updateHistograms(r_raw_freq, g_raw_freq, b_raw_freq);
+            
+            setAnalysisChannel(selectedAnalysisChannel);
+        }
+
+        function compressSingleChannel(channelArray, name) {
+            const totalPixels = channelArray.length;
+            
+            // Apply Spatial Predictive Filter (Differential Compression)
+            const filteredArray = applyPredictiveFilter(channelArray);
+            
+            const freq = calculateFrequency(filteredArray);
+            const treeRoot = buildHuffmanTree(freq);
+            const codes = generateHuffmanCodes(treeRoot);
+
+            const bitstream = encodePixels(filteredArray, codes);
+            const decodedFiltered = decodeBits(bitstream, treeRoot, totalPixels);
+            
+            // Invert prediction model to perfectly reconstruct the original pixels
+            const reconstructed = invertPredictiveFilter(decodedFiltered);
+
+            const entropy = computeEntropy(freq, totalPixels);
+            const avgLength = computeAvgCodeLength(freq, codes, totalPixels);
+
+            let minLen = Infinity;
+            let maxLen = 0;
+            let uniqueCount = 0;
+            for (let i = 0; i < 256; i++) {
+                if (freq[i] > 0) {
+                    uniqueCount++;
+                    const codeLen = codes[i].length;
+                    if (codeLen < minLen) minLen = codeLen;
+                    if (codeLen > maxLen) maxLen = codeLen;
+                }
+            }
+            if (minLen === Infinity) minLen = 0;
+
+            return {
+                name,
+                frequency: freq,
+                treeRoot,
+                codes,
+                encoded_bits: bitstream,
+                reconstructed,
+                entropy,
+                avgLength,
+                uniqueCount,
+                minLen,
+                maxLen
+            };
+        }
+
+        // ==========================================
+        // CANVAS DISPLAY PIPELINE
+        // ==========================================
+        function drawCanvasOriginal(sourceCanvas) {
+            const targetCanvas = document.getElementById('canvas-original');
+            const targetCtx = targetCanvas.getContext('2d');
+            targetCanvas.width = sourceCanvas.width;
+            targetCanvas.height = sourceCanvas.height;
+            targetCtx.drawImage(sourceCanvas, 0, 0);
+
+            document.getElementById('size-original-dim').textContent = `${sourceCanvas.width} x ${sourceCanvas.height} px`;
+        }
+
+        // Output reconstructed pixels to target canvas
+        function drawCanvasReconstructed(w, h, pixelData) {
+            const targetCanvas = document.getElementById('canvas-reconstructed');
+            const targetCtx = targetCanvas.getContext('2d');
+            targetCanvas.width = w;
+            targetCanvas.height = h;
+
+            const imgData = targetCtx.createImageData(w, h);
+            imgData.data.set(pixelData);
+            targetCtx.putImageData(imgData, 0, 0);
+        }
+
+        // ==========================================
+        // STATS & RATIO BUILDER
+        // ==========================================
+        function updateMetrics(latencyMs) {
+            const totalPixels = currentImageWidth * currentImageHeight;
+            const originalBytes = totalPixels * 3;
+
+            const compressedBits = 
+                compressionResult.Red.encoded_bits.length +
+                compressionResult.Green.encoded_bits.length +
+                compressionResult.Blue.encoded_bits.length;
+            const compressedBytes = Math.ceil(compressedBits / 8);
+
+            const ratio = (originalBytes / compressedBytes).toFixed(2);
+            const spaceSaved = (((originalBytes - compressedBytes) / originalBytes) * 100).toFixed(2);
+
+            document.getElementById('process-timer').textContent = `Time: ${latencyMs}ms`;
+            document.getElementById('stat-raw-bytes').textContent = `${originalBytes.toLocaleString()} B`;
+            document.getElementById('stat-comp-bytes').textContent = `${compressedBytes.toLocaleString()} B`;
+            document.getElementById('stat-ratio').textContent = `${ratio} : 1`;
+            document.getElementById('stat-saved-percent').textContent = `${spaceSaved}%`;
+
+            let perfectMatch = true;
+            for (let i = 0; i < originalImageData.length; i++) {
+                if (originalImageData[i] !== reconstructedImageData[i]) {
+                    perfectMatch = false;
+                    break;
+                }
+            }
+
+            const badge = document.getElementById('lossless-badge');
+            const statusLabel = document.getElementById('reconstruct-status');
+            if (perfectMatch) {
+                badge.className = "px-3 py-1 rounded-full text-[10px] font-black tracking-wider bg-accentGreen/10 text-accentGreen border border-accentGreen/20 shadow-inner";
+                badge.textContent = "✓ Lossless Integrity Match";
+                statusLabel.className = "text-[10px] font-bold text-accentGreen";
+                statusLabel.textContent = "Perfect Lossless Rebuild";
+            } else {
+                badge.className = "px-3 py-1 rounded-full text-[10px] font-black tracking-wider bg-accentRed/10 text-accentRed border border-accentRed/20 shadow-inner";
+                badge.textContent = "⚠ Mismatch Warning";
+                statusLabel.className = "text-[10px] font-bold text-accentRed";
+                statusLabel.textContent = "Unmatched Pixel Alignments";
+            }
+        }
+
+        // ==========================================
+        // HISTOGRAM & ANALYTICAL GRAPH CHARTING
+        // ==========================================
+        function updateHistograms(rFreq, gFreq, bFreq) {
+            const ctx = document.getElementById('histogram-chart').getContext('2d');
+            const labels = Array.from({length: 256}, (_, i) => i);
+
+            if (rgbHistogramChartInstance) {
+                rgbHistogramChartInstance.destroy();
+            }
+
+            rgbHistogramChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Red Channel',
+                            data: rFreq,
+                            borderColor: '#f43f5e',
+                            backgroundColor: 'rgba(244, 63, 94, 0.05)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Green Channel',
+                            data: gFreq,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Blue Channel',
+                            data: bFreq,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', font: { size: 9 } } },
+                        y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', font: { size: 9 } } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#f1f5f9', boxWidth: 12, font: { size: 10, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        function setAnalysisChannel(chName) {
+            selectedAnalysisChannel = chName;
+
+            ['Red', 'Green', 'Blue'].forEach(btn => {
+                const el = document.getElementById(`btn-ch-${btn}`);
+                if (btn === chName) {
+                    el.className = `px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md ${
+                        btn === 'Red' ? 'bg-accentRed text-white' : btn === 'Green' ? 'bg-accentGreen text-white' : 'bg-accentBlue text-white'
+                    }`;
+                } else {
+                    el.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-800 text-slate-400 hover:text-white";
+                }
+            });
+
+            const target = compressionResult[chName];
+            if (!target) return;
+
+            document.getElementById('ch-unique').textContent = target.uniqueCount;
+            document.getElementById('ch-height').textContent = target.maxLen;
+            document.getElementById('ch-min-len').textContent = `${target.minLen} bits`;
+            document.getElementById('ch-max-len').textContent = `${target.maxLen} bits`;
+
+            document.getElementById('stream-total-bits').textContent = `${target.encoded_bits.length.toLocaleString()} bits`;
+            document.getElementById('binary-preview').textContent = target.encoded_bits.slice(0, 1500) + (target.encoded_bits.length > 1500 ? " ..." : "");
+
+            rebuildCodeTable(target);
+            plotIndividualChannelCharts(target);
+        }
+
+        function rebuildCodeTable(channelResult) {
+            const tbody = document.getElementById('code-table-body');
+            tbody.innerHTML = "";
+
+            const total = currentImageWidth * currentImageHeight;
+            const dataRowObjects = [];
+
+            for (let i = 0; i < 256; i++) {
+                if (channelResult.frequency[i] > 0) {
+                    dataRowObjects.push({
+                        val: i,
+                        freq: channelResult.frequency[i],
+                        prob: (channelResult.frequency[i] / total).toFixed(5),
+                        code: channelResult.codes[i],
+                        len: channelResult.codes[i].length
+                    });
+                }
+            }
+
+            dataRowObjects.sort((a, b) => b.freq - a.freq);
+
+            dataRowObjects.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-darkBg transition-colors border-b border-accentBorder";
+                tr.setAttribute('data-pixel', row.val);
+
+                let colorBlock = "";
+                if (channelResult.name === 'Red') colorBlock = `rgb(${row.val},0,0)`;
+                else if (channelResult.name === 'Green') colorBlock = `rgb(0,${row.val},0)`;
+                else colorBlock = `rgb(0,0,${row.val})`;
+
+                tr.innerHTML = `
+                    <td class="p-3 font-bold flex items-center gap-2">
+                        <span class="w-3 h-3 rounded" style="background-color: ${colorBlock}"></span>
+                        <span>${row.val}</span>
+                    </td>
+                    <td class="p-3 text-slate-300">${row.freq.toLocaleString()}</td>
+                    <td class="p-3 text-slate-400">${row.prob}</td>
+                    <td class="p-3 font-mono text-accentBlue font-bold">${row.code}</td>
+                    <td class="p-3 text-slate-400">${row.len} bits</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterCodeTable() {
+            const query = document.getElementById('table-search').value.trim();
+            const rows = document.querySelectorAll('#code-table-body tr');
+            rows.forEach(row => {
+                const pixelVal = row.getAttribute('data-pixel');
+                if (query === "" || pixelVal.includes(query)) {
+                    row.classList.remove('hidden');
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+        }
+
+        function plotIndividualChannelCharts(channelResult) {
+            const total = currentImageWidth * currentImageHeight;
+            const dataRowObjects = [];
+
+            for (let i = 0; i < 256; i++) {
+                if (channelResult.frequency[i] > 0) {
+                    dataRowObjects.push({
+                        val: i,
+                        freq: channelResult.frequency[i],
+                        codeLen: channelResult.codes[i].length
+                    });
+                }
+            }
+
+            const top20 = [...dataRowObjects].sort((a, b) => b.freq - a.freq).slice(0, 20);
+
+            const freqLabels = top20.map(d => `${d.val}`);
+            const freqValues = top20.map(d => d.freq);
+
+            let baseColor = '#1f77ff'; 
+            if (channelResult.name === 'Red') baseColor = '#f43f5e';
+            else if (channelResult.name === 'Green') baseColor = '#10b981';
+
+            const ctxFreq = document.getElementById('chart-freq-top').getContext('2d');
+            if (frequencyChartInstance) frequencyChartInstance.destroy();
+            frequencyChartInstance = new Chart(ctxFreq, {
+                type: 'bar',
+                data: {
+                    labels: freqLabels,
+                    datasets: [{
+                        label: 'Counts',
+                        data: freqValues,
+                        backgroundColor: baseColor,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { display: false } },
+                        y: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: '#1e293b' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            const sortedByVal = [...top20].sort((a, b) => a.val - b.val);
+            const lenLabels = sortedByVal.map(d => `${d.val}`);
+            const lenValues = sortedByVal.map(d => d.codeLen);
+
+            const ctxLen = document.getElementById('chart-code-lengths').getContext('2d');
+            if (codeLengthChartInstance) codeLengthChartInstance.destroy();
+            codeLengthChartInstance = new Chart(ctxLen, {
+                type: 'bar',
+                data: {
+                    labels: lenLabels,
+                    datasets: [{
+                        label: 'Length',
+                        data: lenValues,
+                        backgroundColor: '#6366f1',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { display: false } },
+                        y: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: '#1e293b' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // ==========================================
+        // SLIDES SYSTEM
+        // ==========================================
+        function changeSlide(direction) {
+            let nextSlide = activeSlideIdx + direction;
+            if (nextSlide < 1) nextSlide = totalSlides;
+            if (nextSlide > totalSlides) nextSlide = 1;
+
+            document.getElementById(`slide-${activeSlideIdx}`).classList.add('hidden');
+            document.getElementById(`slide-${nextSlide}`).classList.remove('hidden');
+
+            activeSlideIdx = nextSlide;
+            document.getElementById('slide-indicator').textContent = `Slide ${activeSlideIdx} / ${totalSlides}`;
+        }
+
+        // ==========================================
+        // PACK BITSTREAM INTO BINARY BUFFER
+        // ==========================================
+        function packBitstreamToBuffer() {
+            if (!compressionResult.Red) return null;
+
+            let totalSize = 9 + 4 + 4; 
+            const orderedChs = ['Red', 'Green', 'Blue'];
+
+            orderedChs.forEach(ch => {
+                totalSize += 1024; 
+                totalSize += 4;    
+                totalSize += Math.ceil(compressionResult[ch].encoded_bits.length / 8);
+            });
+
+            const arrayBuffer = new ArrayBuffer(totalSize);
+            const view = new DataView(arrayBuffer);
+            const uint8 = new Uint8Array(arrayBuffer);
+
+            const magic = "HUFFCOLOR";
+            for (let i = 0; i < magic.length; i++) {
+                uint8[i] = magic.charCodeAt(i);
+            }
+
+            let offset = 9;
+            view.setUint32(offset, currentImageWidth, false); offset += 4;
+            view.setUint32(offset, currentImageHeight, false); offset += 4;
+
+            orderedChs.forEach(ch => {
+                const chRes = compressionResult[ch];
+                
+                for (let i = 0; i < 256; i++) {
+                    const freqVal = chRes.frequency[i] || 0;
+                    view.setUint32(offset, freqVal, false);
+                    offset += 4;
+                }
+
+                const bitstreamLen = chRes.encoded_bits.length;
+                view.setUint32(offset, bitstreamLen, false);
+                offset += 4;
+
+                const byteSize = Math.ceil(bitstreamLen / 8);
+                const str = chRes.encoded_bits;
+                for (let b = 0; b < byteSize; b++) {
+                    let byteVal = 0;
+                    for (let bitIdx = 0; bitIdx < 8; bitIdx++) {
+                        const strIdx = b * 8 + bitIdx;
+                        if (strIdx < bitstreamLen) {
+                            if (str[strIdx] === '1') {
+                                byteVal |= (1 << (7 - bitIdx));
+                            }
+                        }
+                    }
+                    view.setUint8(offset, byteVal);
+                    offset++;
+                }
+            });
+
+            return arrayBuffer;
+        }
+
+        function parseCompressedBinBuffer(arrayBuffer) {
+            const view = new DataView(arrayBuffer);
+            const uint8 = new Uint8Array(arrayBuffer);
+
+            const magic = "HUFFCOLOR";
+            for (let i = 0; i < magic.length; i++) {
+                if (uint8[i] !== magic.charCodeAt(i)) {
+                    throw new Error("Invalid structure format.");
+                }
+            }
+
+            let offset = 9;
+            const width = view.getUint32(offset, false); offset += 4;
+            const height = view.getUint32(offset, false); offset += 4;
+
+            const channels = {};
+            const orderedChs = ['Red', 'Green', 'Blue'];
+
+            orderedChs.forEach(ch => {
+                const frequencies = Array(256).fill(0);
+                for (let i = 0; i < 256; i++) {
+                    frequencies[i] = view.getUint32(offset, false);
+                    offset += 4;
+                }
+
+                const bitLength = view.getUint32(offset, false);
+                offset += 4;
+
+                const byteSize = Math.ceil(bitLength / 8);
+                const bitStringArray = [];
+
+                for (let b = 0; b < byteSize; b++) {
+                    const byteVal = view.getUint8(offset);
+                    offset++;
+                    for (let bitIdx = 0; bitIdx < 8; bitIdx++) {
+                        const globalBitIdx = b * 8 + bitIdx;
+                        if (globalBitIdx < bitLength) {
+                            const val = (byteVal >> (7 - bitIdx)) & 1;
+                            bitStringArray.push(val === 1 ? '1' : '0');
+                        }
+                    }
+                }
+
+                channels[ch] = {
+                    frequency: frequencies,
+                    encoded_bits: bitStringArray.join("")
+                };
+            });
+
+            return { width, height, channels };
+        }
+
+        // ==========================================
+        // DOWNLOAD HOOKS
+        // ==========================================
+        function downloadCompressedFile() {
+            const buffer = packBitstreamToBuffer();
+            if (!buffer) {
+                showToast("Please run compression prior to triggering exports.", "error");
+                return;
+            }
+
+            const blob = new Blob([buffer], { type: 'application/octet-stream' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = "huffman_color_compressed.bin";
+            link.click();
+            showToast("Successfully compiled Huffman binary payload.");
+        }
+
+        function downloadReconstructedImage() {
+            const targetCanvas = document.getElementById('canvas-reconstructed');
+            const dataUrl = targetCanvas.toDataURL('image/png');
+            
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = "reconstructed_color_image.png";
+            link.click();
+            showToast("PNG reconstructed image exported.");
+        }
+
+        function downloadCSVTable() {
+            const targetResult = compressionResult[selectedAnalysisChannel];
+            if (!targetResult) {
+                showToast("Please generate a schema prior to downloading tables.", "error");
+                return;
+            }
+
+            const total = currentImageWidth * currentImageHeight;
+            let csvContent = "data:text/csv;charset=utf-8,Channel,Pixel Value,Frequency,Probability,Huffman Code,Length\n";
+
+            for (let i = 0; i < 256; i++) {
+                if (targetResult.frequency[i] > 0) {
+                    const freq = targetResult.frequency[i];
+                    const prob = (freq / total).toFixed(6);
+                    const code = targetResult.codes[i];
+                    const len = code.length;
+                    csvContent += `${selectedAnalysisChannel},${i},${freq},${prob},${code},${len}\n`;
+                }
+            }
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `huffman_${selectedAnalysisChannel.toLowerCase()}_table.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Lexicon table exported to CSV.");
+        }
+
+        // ==========================================
+        // DECOMPRESSION PARSING
+        // ==========================================
+        function handleBinUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const buffer = event.target.result;
+                    const parsed = parseCompressedBinBuffer(buffer);
+
+                    currentImageWidth = parsed.width;
+                    currentImageHeight = parsed.height;
+
+                    const totalPixels = currentImageWidth * currentImageHeight;
+                    const startTime = performance.now();
+
+                    const channels = ['Red', 'Green', 'Blue'];
+                    const channelResults = {};
+
+                    channels.forEach(ch => {
+                        const rawCh = parsed.channels[ch];
+                        const treeRoot = buildHuffmanTree(rawCh.frequency);
+                        const codes = generateHuffmanCodes(treeRoot);
+                        
+                        // Decode raw difference codes
+                        const decodedFiltered = decodeBits(rawCh.encoded_bits, treeRoot, totalPixels);
+                        
+                        // Apply the exact inverse predictor to get original pixels with 100% precision
+                        const decoded = invertPredictiveFilter(decodedFiltered);
+
+                        let uniqueCount = 0;
+                        let minLen = Infinity;
+                        let maxLen = 0;
+                        for (let i = 0; i < 256; i++) {
+                            if (rawCh.frequency[i] > 0) {
+                                uniqueCount++;
+                                const codeLen = codes[i].length;
+                                if (codeLen < minLen) minLen = codeLen;
+                                if (codeLen > maxLen) maxLen = codeLen;
+                            }
+                        }
+                        if (minLen === Infinity) minLen = 0;
+
+                        const entropy = computeEntropy(rawCh.frequency, totalPixels);
+                        const avgLength = computeAvgCodeLength(rawCh.frequency, codes, totalPixels);
+
+                        channelResults[ch] = {
+                            name: ch,
+                            frequency: rawCh.frequency,
+                            treeRoot,
+                            codes,
+                            encoded_bits: rawCh.encoded_bits,
+                            reconstructed: decoded,
+                            entropy,
+                            avgLength,
+                            uniqueCount,
+                            minLen,
+                            maxLen
+                        };
+                    });
+
+                    const endTime = performance.now();
+                    const elapsed = Math.round(endTime - startTime);
+
+                    compressionResult = {
+                        Red: channelResults.Red,
+                        Green: channelResults.Green,
+                        Blue: channelResults.Blue,
+                        timeMs: elapsed
+                    };
+
+                    reconstructedImageData = new Uint8ClampedArray(totalPixels * 4);
+                    for (let i = 0; i < totalPixels; i++) {
+                        reconstructedImageData[i * 4] = channelResults.Red.reconstructed[i];
+                        reconstructedImageData[i * 4 + 1] = channelResults.Green.reconstructed[i];
+                        reconstructedImageData[i * 4 + 2] = channelResults.Blue.reconstructed[i];
+                        reconstructedImageData[i * 4 + 3] = 255; 
+                    }
+
+                    drawCanvasReconstructed(currentImageWidth, currentImageHeight, reconstructedImageData);
+                    
+                    const origCanvas = document.getElementById('canvas-original');
+                    const origCtx = origCanvas.getContext('2d');
+                    origCanvas.width = currentImageWidth;
+                    origCanvas.height = currentImageHeight;
+                    origCtx.fillStyle = '#151d30';
+                    origCtx.fillRect(0, 0, currentImageWidth, currentImageHeight);
+                    origCtx.fillStyle = '#94a3b8';
+                    origCtx.font = '10px monospace';
+                    origCtx.textAlign = 'center';
+                    origCtx.fillText('Coded Byte Block', currentImageWidth/2, currentImageHeight/2);
+                    document.getElementById('size-original-dim').textContent = `${currentImageWidth} x ${currentImageHeight} px`;
+
+                    updateMetrics(elapsed);
+
+                    // Rebuild histograms
+                    const r_raw_freq = calculateFrequency(channelResults.Red.reconstructed);
+                    const g_raw_freq = calculateFrequency(channelResults.Green.reconstructed);
+                    const b_raw_freq = calculateFrequency(channelResults.Blue.reconstructed);
+                    updateHistograms(r_raw_freq, g_raw_freq, b_raw_freq);
+                    
+                    setAnalysisChannel(selectedAnalysisChannel);
+
+                    switchTab('compression');
+                    showToast("Decompressed binary bitstreams successfully!");
+                } catch (err) {
+                    showToast(`Failed decoding package: ${err.message}`, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"e3c1c9af36de41759418005494a48906","r":1,"spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
